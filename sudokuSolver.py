@@ -1,5 +1,5 @@
 # https://github.com/ForrestKnight/SudokuSolver just in case
-from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NW, W, NE, E, X
+from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NW, W, NE, E, X, Canvas
 from tkinter.ttk import Style, Label, Button, Entry, Notebook, Combobox, Frame
 from os import path
 
@@ -38,6 +38,41 @@ class SudokuSolver(Tk):
         # Frame Board #
         self.frame_board = Frame(self)
         self.frame_board.pack(side=TOP, anchor=NW, fill=BOTH, expand=True)
+
+        # Create a 2D list to hold the Entry widgets
+        entries = []
+        for i in range(9):
+            row = []
+            for j in range(9):
+                entry = Entry(self.frame_board, width=4, justify="center")
+                entry.grid(row=i, column=j)
+                row.append(entry)
+            entries.append(row)
+
+        # Create a canvas for drawing lines
+        canvas = Canvas(self.frame_board, width=400, height=400)
+        canvas.grid(row=0, column=0)
+
+        # Draw the grid lines
+        for i in range(10):
+            if i % 3 == 0:
+                line_width = 2  # Thick line for every 3rd line
+            else:
+                line_width = 1  # Thin line for other lines
+
+            # Vertical lines
+            canvas.create_line(40 * i, 0, 40 * i, 400, width=line_width)
+
+            # Horizontal lines
+            canvas.create_line(0, 40 * i, 400, 40 * i, width=line_width)
+
+        # Draw the section lines
+        for i in range(4):
+            line_width = 2
+            # Vertical lines
+            canvas.create_line(120 * i, 0, 120 * i, 400, width=line_width)
+            # Horizontal lines
+            canvas.create_line(0, 120 * i, 400, 120 * i, width=line_width)
 
         # Frame Bottom #
 
