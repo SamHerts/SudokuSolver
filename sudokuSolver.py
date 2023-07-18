@@ -73,31 +73,40 @@ class SudokuSolver(Tk):
                 entry.insert(END, value)
 
     def solve(self):
+        possible_choices_list = []
+        possible_choices = [x for x in range(1, 10)]
+        for i in range(81):
+            possible_choices_list.append({x for x in range(1, 10)})
+
+        correct_add = 45
+        correct_mul = 362880
+        for i in range(9):
+            row = self.get_row(1)
+            add_result = 0
+            mul_result = 1
+            for x in row:
+                add_result += x
+                mul_result *= x
+            print(add_result, mul_result)
         for i in range(9):
             for j in range(9):
-                value = self.entries[i][j].get()
-                if value.isdigit():
-                    print(int(value), end=' ')
-                else:
-                    print(0, end=' ')
-            print()
-        print()
+                print(self.entries[i][j].get())
 
     def verify(self):
         correct = True
         for i in range(9):
-            if not self.verify_row(i):
-                print(f"Row {i} is not correct")
+            if not self.verify_row(i) or not self.verify_column(i) or not self.verify_square(i):
+                # print(f"Row {i} is not correct")
                 correct = False
                 break
-            if not self.verify_column(i):
-                print(f"Column {i} is not correct")
-                correct = False
-                break
-            if not self.verify_square(i):
-                print(f"Square {i} is not correct")
-                correct = False
-                break
+            # if not self.verify_column(i):
+            #     # print(f"Column {i} is not correct")
+            #     correct = False
+            #     break
+            # if not self.verify_square(i):
+            #     # print(f"Square {i} is not correct")
+            #     correct = False
+            #     break
 
         if correct:
             print("All Correct!")
