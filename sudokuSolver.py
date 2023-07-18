@@ -1,7 +1,6 @@
 # https://github.com/ForrestKnight/SudokuSolver just in case
 from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NONE, NW, W, NE, E, X, Canvas, N, messagebox, \
-    END, \
-    Toplevel, Text, filedialog
+    END, Toplevel, Text, filedialog
 from tkinter.ttk import Style, Label, Button, Entry, Notebook, Combobox, Frame
 from os import path
 
@@ -18,8 +17,7 @@ class SudokuSolver(Tk):
         # Initialize main application
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.title(f"SudokuSolver")
-        self.geometry("300x400")
-        self.minsize(320, 400)
+        self.geometry("325x360")
         self.resizable(False, False)
 
         # Frame Top #
@@ -39,8 +37,10 @@ class SudokuSolver(Tk):
         self.verify_button.pack(side=LEFT, anchor=W, fill=X)
 
         # Create style used by default for all Frames
-        s = Style(self)
-        s.configure('FrameBoard.TFrame', background='lightblue')
+        self.s = Style(self)
+        self.s.configure('FrameBoard.TFrame', background='lightblue')
+        self.s.configure('Correct.TFrame', background='lightgreen')
+        self.s.configure('Incorrect.TFrame', background='red')
         # Frame Board #
         self.frame_board = Frame(self, style="FrameBoard.TFrame")
         self.frame_board.pack(side=TOP, anchor="center", fill=BOTH, expand=True)
@@ -54,7 +54,7 @@ class SudokuSolver(Tk):
             row = []
             for j in range(9):
                 entry = Entry(self.frame_board, width=2, font=('Arial', 18))
-                entry.grid(row=i, column=j, padx=1, pady=1)
+                entry.grid(row=i, column=j, padx=2, pady=2, sticky="NEWS")
                 row.append(entry)
             entry_grid.append(row)
         return entry_grid
@@ -84,7 +84,103 @@ class SudokuSolver(Tk):
         print()
 
     def verify(self):
-        pass
+        correct = True
+        for i in range(9):
+            if not self.verify_row(i):
+                print(f"Row {i} is not correct")
+                correct = False
+                break
+            if not self.verify_column(i):
+                print(f"Column {i} is not correct")
+                correct = False
+                break
+            if not self.verify_square(i):
+                print(f"Square {i} is not correct")
+                correct = False
+                break
+
+        if correct:
+            print("All Correct!")
+            self.frame_board.configure(style="Correct.TFrame")
+        else:
+            self.frame_board.configure(style="Incorrect.TFrame")
+
+        # print("Printing Rows:")
+        # for i in range(9):
+        #     self.print_row(i)
+        #     print()
+        #
+        # print()
+        #
+        # print("Printing Columns:")
+        # for i in range(9):
+        #     self.print_column(i)
+        #     print()
+        #
+        # print("Printing Squares:")
+        # for i in range(9):
+        #     self.print_square(i)
+        #     print()
+
+    def verify_row(self, index):
+        row = self.get_row(index)
+        return len(row) == len(set(row))
+
+    def verify_column(self, index):
+        column = self.get_column(index)
+        return len(column) == len(set(column))
+
+    def verify_square(self, index):
+        square1, square2, square3 = self.get_square(index)
+        square = square1 + square2 + square3
+        return len(square) == len(set(square))
+
+    def print_row(self, index: int):
+        [print(x, end=' ') for x in self.get_row(index)]
+
+    def print_column(self, index: int):
+        [print(x, end=' ') for x in self.get_column(index)]
+
+    def print_square(self, index):
+        row1, row2, row3 = self.get_square(index)
+        print(row1)
+        print(row2)
+        print(row3)
+
+    def get_column(self, index):
+        return [int((row[index].get()) if row[index].get() else 0) for row in self.entries]
+
+    def get_row(self, index):
+        return [int((x.get()) if x.get() else 0) for x in self.entries[index]]
+
+    def get_square(self, index):
+        if index in [0, 1, 2]:
+            rows = [0, 1, 2]
+        elif index in [3, 4, 5]:
+            rows = [3, 4, 5]
+        elif index in [6, 7, 8]:
+            rows = [6, 7, 8]
+        else:
+            return
+
+        if index in [0, 3, 6]:
+            cols = [0, 1, 2]
+        elif index in [1, 4, 7]:
+            cols = [3, 4, 5]
+        elif index in [2, 5, 8]:
+            cols = [6, 7, 8]
+        else:
+            return
+
+        row1 = self.get_row(rows[0])
+        row2 = self.get_row(rows[1])
+        row3 = self.get_row(rows[2])
+
+        row1 = [row1[cols[0]], row1[cols[1]], row1[cols[2]]]
+        row2 = [row2[cols[0]], row2[cols[1]], row2[cols[2]]]
+        row3 = [row3[cols[0]], row3[cols[1]], row3[cols[2]]]
+
+        return row1, row2, row3
 
     def load_from_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Sudoku Files", "*.sudoku")])
