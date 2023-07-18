@@ -1,5 +1,7 @@
 # https://github.com/ForrestKnight/SudokuSolver just in case
-from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NW, W, NE, E, X, Canvas
+from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NONE, NW, W, NE, E, X, Canvas, N, messagebox, \
+    END, \
+    Toplevel, Text, filedialog
 from tkinter.ttk import Style, Label, Button, Entry, Notebook, Combobox, Frame
 from os import path
 
@@ -16,90 +18,111 @@ class SudokuSolver(Tk):
         # Initialize main application
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.title(f"SudokuSolver")
-        self.geometry("600x400")
-        self.minsize(600, 400)
+        self.geometry("300x400")
+        self.minsize(320, 400)
+        self.resizable(False, False)
 
         # Frame Top #
         self.frame_top = Frame(self)
         self.frame_top.pack(side=TOP, anchor=NW, fill=BOTH)
 
-        self.connect_button = Button(self.frame_top, text="Load from File", command=self.load_from_file)
+        self.connect_button = Button(self.frame_top, text="Load", command=self.load_from_file)
         self.connect_button.pack(side=LEFT, anchor=W, fill=X)
 
-        self.paste_button = Button(self.frame_top, text="Paste from Clipboard", command=self.paste_clipboard)
+        self.paste_button = Button(self.frame_top, text="Paste", command=self.paste_clipboard)
         self.paste_button.pack(side=LEFT, anchor=W, fill=X)
 
-        # Style option for Abort button
-        s = Style(self)
-        s.configure("Bold.TButton", font=("Helvetica", 18, "bold"), foreground="red")
-        self.abort = Button(self.frame_top, text="SOLVE", command=self.solve, style="Bold.TButton")
-        self.abort.pack(side=RIGHT, anchor=NE, fill=BOTH)
+        self.solve_button = Button(self.frame_top, text="Solve", command=self.solve)
+        self.solve_button.pack(side=LEFT, anchor=W, fill=X)
 
+        self.verify_button = Button(self.frame_top, text="Verify", command=self.verify)
+        self.verify_button.pack(side=LEFT, anchor=W, fill=X)
+
+        # Create style used by default for all Frames
+        s = Style(self)
+        s.configure('FrameBoard.TFrame', background='lightblue')
         # Frame Board #
-        self.frame_board = Frame(self)
-        self.frame_board.pack(side=TOP, anchor=NW, fill=BOTH, expand=True)
+        self.frame_board = Frame(self, style="FrameBoard.TFrame")
+        self.frame_board.pack(side=TOP, anchor="center", fill=BOTH, expand=True)
 
         # Create a 2D list to hold the Entry widgets
-        entries = []
+        self.entries = self.create_grid()
+
+    def create_grid(self):
+        entry_grid = []
         for i in range(9):
             row = []
             for j in range(9):
-                entry = Entry(self.frame_board, width=4, justify="center")
-                entry.grid(row=i, column=j)
+                entry = Entry(self.frame_board, width=2, font=('Arial', 18))
+                entry.grid(row=i, column=j, padx=1, pady=1)
                 row.append(entry)
-            entries.append(row)
-
-        # Create a canvas for drawing lines
-        canvas = Canvas(self.frame_board, width=400, height=400)
-        canvas.grid(row=0, column=0)
-
-        # Draw the grid lines
-        for i in range(10):
-            if i % 3 == 0:
-                line_width = 2  # Thick line for every 3rd line
-            else:
-                line_width = 1  # Thin line for other lines
-
-            # Vertical lines
-            canvas.create_line(40 * i, 0, 40 * i, 400, width=line_width)
-
-            # Horizontal lines
-            canvas.create_line(0, 40 * i, 400, 40 * i, width=line_width)
-
-        # Draw the section lines
-        for i in range(4):
-            line_width = 2
-            # Vertical lines
-            canvas.create_line(120 * i, 0, 120 * i, 400, width=line_width)
-            # Horizontal lines
-            canvas.create_line(0, 120 * i, 400, 120 * i, width=line_width)
-
-        # Frame Bottom #
-
-        self.frame_clear = Frame(self)
-        self.frame_clear.pack(fill=BOTH)
-
-        self.frame_traffic = Frame(self)
-        self.frame_traffic.pack(side=TOP, anchor=NW, fill=BOTH, expand=True)
-
-        Button(self.frame_clear, text="Clear", command=self.solve).pack(
-            pady=(5, 5), padx=(5, 5), side=LEFT, anchor=W
-        )
-        Button(self.frame_clear, text="Clear", command=self.solve).pack(
-            pady=(5, 5), padx=(5, 5), side=RIGHT, anchor=E
-        )
+            entry_grid.append(row)
+        return entry_grid
 
     def on_close(self):
         self.destroy()
 
+    def set_board(self, board):
+        for i in range(9):
+            for j in range(9):
+                entry = self.entries[i][j]
+                entry.delete(0, END)
+                value = ""
+                if board[i][j]:
+                    value = str(board[i][j])
+                entry.insert(END, value)
+
     def solve(self):
+        for i in range(9):
+            for j in range(9):
+                value = self.entries[i][j].get()
+                if value.isdigit():
+                    print(int(value), end=' ')
+                else:
+                    print(0, end=' ')
+            print()
+        print()
+
+    def verify(self):
         pass
 
     def load_from_file(self):
-        pass
+        file_path = filedialog.askopenfilename(filetypes=[("Sudoku Files", "*.sudoku")])
+        if file_path:
+            try:
+                with open(file_path, 'r') as file:
+                    lines = file.readlines()
+                    board = [[int(char) for char in line.strip()] for line in lines]
+                    self.set_board(board)
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred while loading the file:\n{str(e)}")
 
     def paste_clipboard(self):
-        pass
+        def validate_input():
+            board = []
+            input_lines = input_text.get('1.0', END).strip().split('\n')
+            if len(input_lines) != 9:
+                messagebox.showerror("Invalid Input", "Please enter 9 lines of values.")
+                return
+            for line in input_lines:
+                if len(line) != 9 or not line.isdigit():
+                    messagebox.showerror("Invalid Input", "Please enter a valid Sudoku board.")
+                    return
+                board.append(list(map(int, line)))
+            self.set_board(board)
+            popup.destroy()
+
+        popup = Toplevel()
+        popup.title("Paste Sudoku Board")
+
+        input_label = Label(popup, text="Enter the Sudoku board (use digits 1-9):")
+        input_label.pack()
+
+        input_text = Text(popup, height=9, width=9, font=('Arial', 12))
+        input_text.pack()
+
+        validate_button = Button(popup, text="Validate", command=validate_input)
+        validate_button.pack()
 
 
 if __name__ == "__main__":
