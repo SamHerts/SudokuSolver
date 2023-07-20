@@ -74,10 +74,96 @@ class SudokuSolver(Tk):
 
     def solve(self):
         possible_choices_list = []
-        possible_choices = [x for x in range(1, 10)]
-        for i in range(81):
-            possible_choices_list.append({x for x in range(1, 10)})
+        board_update = [[]]
+        for i in range(9):
+            for j in range(9):
+                value = int(self.entries[i][j].get()) if self.entries[i][j].get() != "" else 0
+                possible_choices_list.append({x for x in range(1, 10)} if value == 0 else {value})
 
+        # print("Original:")
+        # print(f"{possible_choices_list}")
+        while True:
+            changes = self.solve_remove_rows_and_columns_and_squares(possible_choices_list)
+            print(f"{changes=}")
+            if changes >= 0:
+                break
+        if not self.verify():
+            print("Need more logic!")
+
+    def solve_remove_rows_and_columns_and_squares(self, possible_choices_list):
+        count = 0
+        possible_choices_list = self.remove_line_duplicates(possible_choices_list)
+        possible_choices_list = self.remove_column_duplicates(possible_choices_list)
+        possible_choices_list = self.remove_square_duplicates(possible_choices_list)
+
+        for idx in range(len(possible_choices_list)):
+            entry = self.entries[int(idx / 9)][idx % 9]
+            if len(possible_choices_list[idx]) == 1:
+                if entry.get() == '':
+                    x = list(possible_choices_list[idx])
+                    entry.insert(END, x[0])
+                    count += 1
+        return count
+
+    @staticmethod
+    def remove_line_duplicates(possible_choices_list):
+        # For each row
+        for i in range(9):
+            row_index_list = []
+            # For each element in the row
+            for j in range(9):
+                index = (i * 9) + j
+                row_index_list.append(possible_choices_list[index])
+            # Do the set difference
+            non_complete_row = []
+            complete_row = []
+            for idx in range(len(row_index_list)):
+                if len(row_index_list[idx]) != 1:
+                    non_complete_row.append(idx)
+                else:
+                    complete_row.append(idx)
+            for idx in range(len(complete_row)):
+                for idy in range(len(non_complete_row)):
+                    row_index_list[non_complete_row[idy]].difference_update(row_index_list[complete_row[idx]])
+
+        return possible_choices_list
+
+    @staticmethod
+    def remove_column_duplicates(possible_choices_list):
+        for i in range(9):
+            column_index_list = []
+            for j in range(9):
+                index = (j * 9) + i
+                column_index_list.append(possible_choices_list[index])
+            # Do the set difference
+            non_complete_row = []
+            complete_row = []
+            for idx in range(len(column_index_list)):
+                if len(column_index_list[idx]) != 1:
+                    non_complete_row.append(idx)
+                else:
+                    complete_row.append(idx)
+            for idx in range(len(complete_row)):
+                for idy in range(len(non_complete_row)):
+                    column_index_list[non_complete_row[idy]].difference_update(column_index_list[complete_row[idx]])
+
+        return possible_choices_list
+
+    def remove_square_duplicates(self, possible_choices_list):
+        # 0 1 2
+        # 9 10 11
+        # 18 19 20
+        # For each Square
+        for i in range(9):
+            square_index_list = []
+            square = self.get_square(i)
+            for idx in range(3):
+                for idy in range(3):
+                    print(f"{square[idx][idy]}", end=' ')
+
+        return possible_choices_list
+
+    def verify(self):
         correct_add = 45
         correct_mul = 362880
         for i in range(9):
@@ -88,11 +174,7 @@ class SudokuSolver(Tk):
                 add_result += x
                 mul_result *= x
             print(add_result, mul_result)
-        for i in range(9):
-            for j in range(9):
-                print(self.entries[i][j].get())
 
-    def verify(self):
         correct = True
         for i in range(9):
             if not self.verify_row(i) or not self.verify_column(i) or not self.verify_square(i):
@@ -113,23 +195,7 @@ class SudokuSolver(Tk):
             self.frame_board.configure(style="Correct.TFrame")
         else:
             self.frame_board.configure(style="Incorrect.TFrame")
-
-        # print("Printing Rows:")
-        # for i in range(9):
-        #     self.print_row(i)
-        #     print()
-        #
-        # print()
-        #
-        # print("Printing Columns:")
-        # for i in range(9):
-        #     self.print_column(i)
-        #     print()
-        #
-        # print("Printing Squares:")
-        # for i in range(9):
-        #     self.print_square(i)
-        #     print()
+        return correct
 
     def verify_row(self, index):
         row = self.get_row(index)
@@ -161,6 +227,27 @@ class SudokuSolver(Tk):
 
     def get_row(self, index):
         return [int((x.get()) if x.get() else 0) for x in self.entries[index]]
+
+    # def get_square_indexes(self, index):
+    #     if index in [0, 1, 2]:
+    #         rows = [0, 1, 2]
+    #     elif index in [3, 4, 5]:
+    #         rows = [3, 4, 5]
+    #     elif index in [6, 7, 8]:
+    #         rows = [6, 7, 8]
+    #     else:
+    #         return
+    #
+    #     if index in [0, 3, 6]:
+    #         cols = [0, 1, 2]
+    #     elif index in [1, 4, 7]:
+    #         cols = [3, 4, 5]
+    #     elif index in [2, 5, 8]:
+    #         cols = [6, 7, 8]
+    #     else:
+    #         return
+    #
+    #     return [index1, index2, index3, index4, index5, index6, index7, index8, index9]
 
     def get_square(self, index):
         if index in [0, 1, 2]:
