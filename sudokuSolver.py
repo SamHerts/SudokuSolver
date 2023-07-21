@@ -17,7 +17,7 @@ class SudokuSolver(Tk):
         # Initialize main application
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.title(f"SudokuSolver")
-        self.geometry("325x360")
+        self.geometry("493x518")
         self.resizable(False, False)
 
         # Frame Top #
@@ -36,70 +36,124 @@ class SudokuSolver(Tk):
         self.verify_button = Button(self.frame_top, text="Verify", command=self.verify)
         self.verify_button.pack(side=LEFT, anchor=W, fill=X)
 
+        self.entropy_button = Button(self.frame_top, text="Get Entropy", command=self.print_entropy)
+        self.entropy_button.pack(side=LEFT, anchor=W, fill=X)
+
         # Create style used by default for all Frames
         self.s = Style(self)
         self.s.configure('FrameBoard.TFrame', background='lightblue')
         self.s.configure('Correct.TFrame', background='lightgreen')
-        self.s.configure('Incorrect.TFrame', background='red')
+        self.s.configure('Incorrect.TFrame', background='yellow')
+        self.s.configure('IncorrectSmall.TFrame', background='red')
+        self.s.configure('GridFrame.TFrame', background='grey', highlightcolor='lightblue', highlightthickness=1)
         # Frame Board #
         self.frame_board = Frame(self, style="FrameBoard.TFrame")
         self.frame_board.pack(side=TOP, anchor="center", fill=BOTH, expand=True)
 
-        # Create a 2D list to hold the Entry widgets
-        self.entries = self.create_grid()
+        self.blocks = []
+        for r in range(3):
+            row = []
+            for c in range(3):
+                frame = Frame(self.frame_board, style='GridFrame.TFrame', borderwidth=2)
+                frame.grid(row=r, column=c, sticky='nsew', padx=2, pady=2)
+                row.append(frame)
+            self.blocks.append(row)
 
-    def create_grid(self):
-        entry_grid = []
+        self.entries = []
         for i in range(9):
             row = []
             for j in range(9):
-                entry = Entry(self.frame_board, width=2, font=('Arial', 18))
-                entry.grid(row=i, column=j, padx=2, pady=2, sticky="NEWS")
+                # Add cell to the block
+                # Add a frame so that the cell can form a square
+                frm_cell = Frame(self.blocks[i // 3][j // 3], borderwidth=1, style='GridFrame.TFrame')
+                frm_cell.grid(row=(i % 3), column=(j % 3), sticky='nsew')
+                frm_cell.rowconfigure(0, minsize=50, weight=1)
+                frm_cell.columnconfigure(0, minsize=50, weight=1)
+                entry = Entry(frm_cell, width=2, font=('Arial', 18), justify='center')
+                entry.grid(sticky='nsew')
                 row.append(entry)
-            entry_grid.append(row)
-        return entry_grid
+            self.entries.append(row)
+
+        self.possible_choices_list = [{x for x in range(1, 10)} for x in range(81)]
+        self.update_possible_choices()
 
     def on_close(self):
         self.destroy()
 
+    def update_possible_choices(self):
+        for i in range(81):
+            value = self.get_int_entry(i)
+            # print(f"{value=}  {type(value)}")
+            if value != 0:
+                self.possible_choices_list[i].intersection_update({value})
+
     def set_board(self, board):
+        self.frame_board.configure(style="FrameBoard.TFrame")
+        for row in self.blocks:
+            for frame in row:
+                frame.configure(style="GridFrame.TFrame")
         for i in range(9):
             for j in range(9):
                 entry = self.entries[i][j]
+                entry.configure(state='normal')
                 entry.delete(0, END)
                 value = ""
                 if board[i][j]:
                     value = str(board[i][j])
                 entry.insert(END, value)
+                if value != "":
+                    entry.configure(state='readonly')
+        self.possible_choices_list = [{x for x in range(1, 10)} for x in range(81)]
+        self.update_possible_choices()
+
+    def get_int_entry(self, idx, idy=None):
+        if idy is not None:
+            return int(self.entries[idx][idy].get()) if self.entries[idx][idy].get() != "" else 0
+        else:
+            return int(self.entries[idx // 9][idx % 9].get()) if self.entries[idx // 9][idx % 9].get() != "" else 0
 
     def solve(self):
-        possible_choices_list = []
-        board_update = [[]]
-        for i in range(9):
-            for j in range(9):
-                value = int(self.entries[i][j].get()) if self.entries[i][j].get() != "" else 0
-                possible_choices_list.append({x for x in range(1, 10)} if value == 0 else {value})
-
-        # print("Original:")
-        # print(f"{possible_choices_list}")
+        self.update_possible_choices()
         while True:
-            changes = self.solve_remove_rows_and_columns_and_squares(possible_choices_list)
+            changes = self.solve_remove_rows_and_columns_and_squares(self.possible_choices_list)
             print(f"{changes=}")
-            if changes >= 0:
+            if changes == 0:
                 break
         if not self.verify():
             print("Need more logic!")
 
+    def calculate_entropy(self, choice_list):
+        def num_to_range(num, inMin, inMax, outMin, outMax):
+            return outMin + (float(num - inMin) / float(inMax - inMin) * (outMax - outMin))
+
+        original = sum([(len(x) if len(x) != 1 else 0) for x in choice_list])
+        return num_to_range(original, 0, 576, 0, 100)
+
+    def print_entropy(self):
+        self.update_possible_choices()
+        print(f"Entropy: {self.calculate_entropy(self.possible_choices_list)}")
+
     def solve_remove_rows_and_columns_and_squares(self, possible_choices_list):
         count = 0
+        entropy_score = self.calculate_entropy(possible_choices_list)
+        print(f"Before {entropy_score=}")
+
         possible_choices_list = self.remove_line_duplicates(possible_choices_list)
+
         possible_choices_list = self.remove_column_duplicates(possible_choices_list)
+
         possible_choices_list = self.remove_square_duplicates(possible_choices_list)
+
+        entropy_score = self.calculate_entropy(possible_choices_list)
+        print(f"After Removing {entropy_score=}")
+
+        possible_choices_list = self.check_individual_numbers(possible_choices_list)
 
         for idx in range(len(possible_choices_list)):
             entry = self.entries[int(idx / 9)][idx % 9]
             if len(possible_choices_list[idx]) == 1:
                 if entry.get() == '':
+                    # TODO: Validate Row Column Square before inserting
                     x = list(possible_choices_list[idx])
                     entry.insert(END, x[0])
                     count += 1
@@ -150,64 +204,69 @@ class SudokuSolver(Tk):
         return possible_choices_list
 
     def remove_square_duplicates(self, possible_choices_list):
-        # 0 1 2
-        # 9 10 11
-        # 18 19 20
         # For each Square
         for i in range(9):
-            square_index_list = []
-            square = self.get_square(i)
-            for idx in range(3):
-                for idy in range(3):
-                    print(f"{square[idx][idy]}", end=' ')
+            square_index_list = [possible_choices_list[x] for x in self.get_square_indexes(i)]
+
+            # Do the set difference
+            non_complete_row = []
+            complete_row = []
+            for idx in range(len(square_index_list)):
+                if len(square_index_list[idx]) != 1:
+                    non_complete_row.append(idx)
+                else:
+                    complete_row.append(idx)
+            for idx in range(len(complete_row)):
+                for idy in range(len(non_complete_row)):
+                    square_index_list[non_complete_row[idy]].difference_update(square_index_list[complete_row[idx]])
 
         return possible_choices_list
 
-    def verify(self):
-        correct_add = 45
-        correct_mul = 362880
-        for i in range(9):
-            row = self.get_row(1)
-            add_result = 0
-            mul_result = 1
-            for x in row:
-                add_result += x
-                mul_result *= x
-            print(add_result, mul_result)
+    def check_individual_numbers(self, choices_list):
+        for number_to_check in range(1, 10):
+            print(f"{number_to_check=}")
 
+        return choices_list
+
+    def verify(self):
         correct = True
         for i in range(9):
-            if not self.verify_row(i) or not self.verify_column(i) or not self.verify_square(i):
-                # print(f"Row {i} is not correct")
+            if not self.verify_row(i) or not self.verify_column(i):
                 correct = False
                 break
-            # if not self.verify_column(i):
-            #     # print(f"Column {i} is not correct")
-            #     correct = False
-            #     break
-            # if not self.verify_square(i):
-            #     # print(f"Square {i} is not correct")
-            #     correct = False
-            #     break
+        wrong_square = -1
+        for i in range(9):
+            if not self.verify_square(i):
+                wrong_square = i
+                correct = False
+                break
 
         if correct:
             print("All Correct!")
             self.frame_board.configure(style="Correct.TFrame")
+            for row in self.blocks:
+                for frame in row:
+                    frame.configure(style="GridFrame.TFrame")
         else:
+            print(f"{wrong_square=}")
             self.frame_board.configure(style="Incorrect.TFrame")
+            self.blocks[wrong_square // 3][wrong_square % 3].configure(style="IncorrectSmall.TFrame")
+
         return correct
 
     def verify_row(self, index):
         row = self.get_row(index)
+        print(f"Row Index: {index} : {len(row) == len(set(row))}")
         return len(row) == len(set(row))
 
     def verify_column(self, index):
         column = self.get_column(index)
+        print(f"Column Index: {index} : {len(column) == len(set(column))}")
         return len(column) == len(set(column))
 
     def verify_square(self, index):
-        square1, square2, square3 = self.get_square(index)
-        square = square1 + square2 + square3
+        square = self.get_square(index)
+        print(f"Square Index: {index} : {len(square) == len(set(square))}")
         return len(square) == len(set(square))
 
     def print_row(self, index: int):
@@ -217,10 +276,7 @@ class SudokuSolver(Tk):
         [print(x, end=' ') for x in self.get_column(index)]
 
     def print_square(self, index):
-        row1, row2, row3 = self.get_square(index)
-        print(row1)
-        print(row2)
-        print(row3)
+        print(self.get_square(index))
 
     def get_column(self, index):
         return [int((row[index].get()) if row[index].get() else 0) for row in self.entries]
@@ -228,55 +284,20 @@ class SudokuSolver(Tk):
     def get_row(self, index):
         return [int((x.get()) if x.get() else 0) for x in self.entries[index]]
 
-    # def get_square_indexes(self, index):
-    #     if index in [0, 1, 2]:
-    #         rows = [0, 1, 2]
-    #     elif index in [3, 4, 5]:
-    #         rows = [3, 4, 5]
-    #     elif index in [6, 7, 8]:
-    #         rows = [6, 7, 8]
-    #     else:
-    #         return
-    #
-    #     if index in [0, 3, 6]:
-    #         cols = [0, 1, 2]
-    #     elif index in [1, 4, 7]:
-    #         cols = [3, 4, 5]
-    #     elif index in [2, 5, 8]:
-    #         cols = [6, 7, 8]
-    #     else:
-    #         return
-    #
-    #     return [index1, index2, index3, index4, index5, index6, index7, index8, index9]
+    def get_square_indexes(self, index):
+        region_indexes = []
+        start_row = (index // 3) * 3
+        start_col = (index % 3) * 3
+
+        for row in range(start_row, start_row + 3):
+            for col in range(start_col, start_col + 3):
+                region_indexes.append(row * 9 + col)
+
+        return region_indexes
 
     def get_square(self, index):
-        if index in [0, 1, 2]:
-            rows = [0, 1, 2]
-        elif index in [3, 4, 5]:
-            rows = [3, 4, 5]
-        elif index in [6, 7, 8]:
-            rows = [6, 7, 8]
-        else:
-            return
-
-        if index in [0, 3, 6]:
-            cols = [0, 1, 2]
-        elif index in [1, 4, 7]:
-            cols = [3, 4, 5]
-        elif index in [2, 5, 8]:
-            cols = [6, 7, 8]
-        else:
-            return
-
-        row1 = self.get_row(rows[0])
-        row2 = self.get_row(rows[1])
-        row3 = self.get_row(rows[2])
-
-        row1 = [row1[cols[0]], row1[cols[1]], row1[cols[2]]]
-        row2 = [row2[cols[0]], row2[cols[1]], row2[cols[2]]]
-        row3 = [row3[cols[0]], row3[cols[1]], row3[cols[2]]]
-
-        return row1, row2, row3
+        index_list = self.get_square_indexes(index)
+        return [self.get_int_entry(idx) for idx in index_list]
 
     def load_from_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Sudoku Files", "*.sudoku")])
