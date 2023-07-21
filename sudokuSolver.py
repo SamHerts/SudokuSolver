@@ -3,6 +3,7 @@ from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NONE, NW
     END, Toplevel, Text, filedialog
 from tkinter.ttk import Style, Label, Button, Entry, Notebook, Combobox, Frame
 from os import path
+from time import time
 
 
 class SudokuSolver(Tk):
@@ -115,24 +116,31 @@ class SudokuSolver(Tk):
             return int(self.entries[idx // 9][idx % 9].get()) if self.entries[idx // 9][idx % 9].get() != "" else 0
 
     def solve(self):
+        start = time()
         self.update_possible_choices()
         changes = 1
         while changes != 0:
             while changes != 0:
-                if self.calculate_entropy() == 0:
-                    break
                 while changes != 0:
+                    if self.calculate_entropy() == 0:
+                        break
                     changes = self.solve_remove_rows_and_columns_and_squares()
                     print(f"{changes=}")
 
-                changes = self.check_individual_numbers(self.possible_choices_list)
+                if self.calculate_entropy() == 0:
+                    break
+                changes = self.solve_single_possibilities()
                 print(f"{changes=}")
 
-            changes = self.check_for_single_possibility_rows()
+            if self.calculate_entropy() == 0:
+                break
+            changes = self.solve_triplet_possibilities()
             print(f"{changes=}")
 
         if not self.verify():
             print("Need more logic!")
+        end = time()
+        print(f"Total time: {end -start}")
 
     def calculate_entropy(self):
         def num_to_range(num, inMin, inMax, outMin, outMax):
@@ -165,30 +173,49 @@ class SudokuSolver(Tk):
         return count
 
     def solve_remove_rows_and_columns_and_squares(self):
-        print("\n Removing Duplicates from Rows, Columns, and Squares")
-        entropy_score = self.calculate_entropy()
-        print(f"Before {entropy_score=}")
+        print("\nRemoving Duplicates")
+        print(f"Before {self.calculate_entropy()}")
 
-        self.remove_line_duplicates(self.possible_choices_list)
+        self.remove_line_duplicates()
+        self.remove_column_duplicates()
+        self.remove_square_duplicates()
 
-        self.remove_column_duplicates(self.possible_choices_list)
-
-        self.remove_square_duplicates(self.possible_choices_list)
-
-        entropy_score = self.calculate_entropy()
-        print(f"After Removing {entropy_score=}")
+        print(f"After {self.calculate_entropy()}")
 
         return self.update_board()
 
-    @staticmethod
-    def remove_line_duplicates(possible_choices_list):
+    def solve_triplet_possibilities(self):
+        print("\nSolving for Triplet Possibilities")
+        print(f"Before {self.calculate_entropy()}")
+
+        self.check_triplet_rows()
+
+        # self.check_for_triplet_possibility_columns()
+
+        print(f"After {self.calculate_entropy()}")
+
+        return self.update_board()
+
+    def solve_single_possibilities(self):
+        print("\nSolving for Single Possibilities")
+        print(f"Before {self.calculate_entropy()}")
+
+        self.check_for_single_rows()
+
+        self.check_for_single_columns()
+
+        print(f"After {self.calculate_entropy()}")
+
+        return self.update_board()
+
+    def remove_line_duplicates(self):
         # For each row
         for i in range(9):
             row_index_list = []
             # For each element in the row
             for j in range(9):
                 index = (i * 9) + j
-                row_index_list.append(possible_choices_list[index])
+                row_index_list.append(self.possible_choices_list[index])
             # Do the set difference
             non_complete_row = []
             complete_row = []
@@ -201,15 +228,12 @@ class SudokuSolver(Tk):
                 for idy in range(len(non_complete_row)):
                     row_index_list[non_complete_row[idy]].difference_update(row_index_list[complete_row[idx]])
 
-        return possible_choices_list
-
-    @staticmethod
-    def remove_column_duplicates(possible_choices_list):
+    def remove_column_duplicates(self):
         for i in range(9):
             column_index_list = []
             for j in range(9):
                 index = (j * 9) + i
-                column_index_list.append(possible_choices_list[index])
+                column_index_list.append(self.possible_choices_list[index])
             # Do the set difference
             non_complete_row = []
             complete_row = []
@@ -222,12 +246,10 @@ class SudokuSolver(Tk):
                 for idy in range(len(non_complete_row)):
                     column_index_list[non_complete_row[idy]].difference_update(column_index_list[complete_row[idx]])
 
-        return possible_choices_list
-
-    def remove_square_duplicates(self, possible_choices_list):
+    def remove_square_duplicates(self):
         # For each Square
         for i in range(9):
-            square_index_list = [possible_choices_list[x] for x in self.get_square_indexes(i)]
+            square_index_list = [self.possible_choices_list[x] for x in self.get_square_indexes(i)]
 
             # Do the set difference
             non_complete_row = []
@@ -241,29 +263,34 @@ class SudokuSolver(Tk):
                 for idy in range(len(non_complete_row)):
                     square_index_list[non_complete_row[idy]].difference_update(square_index_list[complete_row[idx]])
 
-        return possible_choices_list
-
-    def check_for_single_possibility_rows(self):
-        print("\n Checking for Single Possibilities in Rows")
+    def check_for_single_rows(self):
         for i in range(9):
             row = [self.possible_choices_list[x] for x in self.get_row_indexes(i)]
             for number in range(1, 10):
                 set_list = [[idx, my_set] for idx, my_set in enumerate(row) if (number in my_set and len(my_set) > 1)]
                 if len(set_list) == 1:
-                    print(f"row={i} {set_list[0][0]=} {set_list[0][1]=} {number=} ")
                     set_list[0][1].intersection_update({number})
-        return self.update_board()
+                    return
 
-    def check_individual_numbers(self, choices_list):
+    def check_for_single_columns(self):
+        for i in range(9):
+            column = [self.possible_choices_list[x] for x in self.get_column_indexes(i)]
+            for number in range(1, 10):
+                set_list = [[idx, my_set] for idx, my_set in enumerate(column) if (number in my_set and len(my_set) > 1)]
+                if len(set_list) == 1:
+                    set_list[0][1].intersection_update({number})
+                    return
+
+    def check_triplet_rows(self):
         print("\n Checking for Singular numbers in groups of 3")
         for idx in range(3):
             row1 = self.get_row(0 + (3 * idx))
             row2 = self.get_row(1 + (3 * idx))
             row3 = self.get_row(2 + (3 * idx))
 
-            row1_choices = [choices_list[x] for x in self.get_row_indexes(0 + (3 * idx))]
-            row2_choices = [choices_list[x] for x in self.get_row_indexes(1 + (3 * idx))]
-            row3_choices = [choices_list[x] for x in self.get_row_indexes(2 + (3 * idx))]
+            row1_choices = [self.possible_choices_list[x] for x in self.get_row_indexes(0 + (3 * idx))]
+            row2_choices = [self.possible_choices_list[x] for x in self.get_row_indexes(1 + (3 * idx))]
+            row3_choices = [self.possible_choices_list[x] for x in self.get_row_indexes(2 + (3 * idx))]
 
             for number_to_check in range(1, 10):
                 if number_to_check in row1 and number_to_check in row2 and number_to_check in row3:
@@ -359,6 +386,9 @@ class SudokuSolver(Tk):
     def get_row_indexes(self, index):
         return [index * 9 + x for x in range(9)]
 
+    def get_column_indexes(self, index):
+        return [(index % 9) + x * 9 for x in range(9)]
+
     def get_square_indexes(self, index):
         region_indexes = []
         start_row = (index // 3) * 3
@@ -367,7 +397,6 @@ class SudokuSolver(Tk):
         for row in range(start_row, start_row + 3):
             for col in range(start_col, start_col + 3):
                 region_indexes.append(row * 9 + col)
-
         return region_indexes
 
     def get_square(self, index):
