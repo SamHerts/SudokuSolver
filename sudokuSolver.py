@@ -39,6 +39,9 @@ class SudokuSolver(Tk):
         self.entropy_button = Button(self.frame_top, text="Get Entropy", command=self.print_entropy)
         self.entropy_button.pack(side=LEFT, anchor=W, fill=X)
 
+        self.possibility_button = Button(self.frame_top, text="Get Possibilities", command=self.print_possibilities)
+        self.possibility_button.pack(side=LEFT, anchor=W, fill=X)
+
         # Create style used by default for all Frames
         self.s = Style(self)
         self.s.configure('FrameBoard.TFrame', background='lightblue')
@@ -83,7 +86,6 @@ class SudokuSolver(Tk):
     def update_possible_choices(self):
         for i in range(81):
             value = self.get_int_entry(i)
-            # print(f"{value=}  {type(value)}")
             if value != 0:
                 self.possible_choices_list[i].intersection_update({value})
 
@@ -114,50 +116,69 @@ class SudokuSolver(Tk):
 
     def solve(self):
         self.update_possible_choices()
-        while True:
-            changes = self.solve_remove_rows_and_columns_and_squares(self.possible_choices_list)
+        changes = 1
+        while changes != 0:
+            while changes != 0:
+                if self.calculate_entropy() == 0:
+                    break
+                while changes != 0:
+                    changes = self.solve_remove_rows_and_columns_and_squares()
+                    print(f"{changes=}")
+
+                changes = self.check_individual_numbers(self.possible_choices_list)
+                print(f"{changes=}")
+
+            changes = self.check_for_single_possibility_rows()
             print(f"{changes=}")
-            if changes == 0:
-                break
+
         if not self.verify():
             print("Need more logic!")
 
-    def calculate_entropy(self, choice_list):
+    def calculate_entropy(self):
         def num_to_range(num, inMin, inMax, outMin, outMax):
             return outMin + (float(num - inMin) / float(inMax - inMin) * (outMax - outMin))
 
-        original = sum([(len(x) if len(x) != 1 else 0) for x in choice_list])
+        original = sum([(len(x) if len(x) != 1 else 0) for x in self.possible_choices_list])
         return num_to_range(original, 0, 576, 0, 100)
 
     def print_entropy(self):
         self.update_possible_choices()
-        print(f"Entropy: {self.calculate_entropy(self.possible_choices_list)}")
+        print(f"Entropy: {self.calculate_entropy()}")
 
-    def solve_remove_rows_and_columns_and_squares(self, possible_choices_list):
+    def print_possibilities(self):
+        self.update_possible_choices()
+        print(f"Possible Choices: ")
+        for i in range(9):
+            my_set = [self.possible_choices_list[x] for x in self.get_row_indexes(i)]
+            print(my_set)
+
+    def update_board(self):
         count = 0
-        entropy_score = self.calculate_entropy(possible_choices_list)
-        print(f"Before {entropy_score=}")
-
-        possible_choices_list = self.remove_line_duplicates(possible_choices_list)
-
-        possible_choices_list = self.remove_column_duplicates(possible_choices_list)
-
-        possible_choices_list = self.remove_square_duplicates(possible_choices_list)
-
-        entropy_score = self.calculate_entropy(possible_choices_list)
-        print(f"After Removing {entropy_score=}")
-
-        possible_choices_list = self.check_individual_numbers(possible_choices_list)
-
-        for idx in range(len(possible_choices_list)):
+        for idx in range(len(self.possible_choices_list)):
             entry = self.entries[int(idx / 9)][idx % 9]
-            if len(possible_choices_list[idx]) == 1:
+            if len(self.possible_choices_list[idx]) == 1:
                 if entry.get() == '':
                     # TODO: Validate Row Column Square before inserting
-                    x = list(possible_choices_list[idx])
+                    x = list(self.possible_choices_list[idx])
                     entry.insert(END, x[0])
                     count += 1
         return count
+
+    def solve_remove_rows_and_columns_and_squares(self):
+        print("\n Removing Duplicates from Rows, Columns, and Squares")
+        entropy_score = self.calculate_entropy()
+        print(f"Before {entropy_score=}")
+
+        self.remove_line_duplicates(self.possible_choices_list)
+
+        self.remove_column_duplicates(self.possible_choices_list)
+
+        self.remove_square_duplicates(self.possible_choices_list)
+
+        entropy_score = self.calculate_entropy()
+        print(f"After Removing {entropy_score=}")
+
+        return self.update_board()
 
     @staticmethod
     def remove_line_duplicates(possible_choices_list):
@@ -222,11 +243,62 @@ class SudokuSolver(Tk):
 
         return possible_choices_list
 
-    def check_individual_numbers(self, choices_list):
-        for number_to_check in range(1, 10):
-            print(f"{number_to_check=}")
+    def check_for_single_possibility_rows(self):
+        print("\n Checking for Single Possibilities in Rows")
+        for i in range(9):
+            row = [self.possible_choices_list[x] for x in self.get_row_indexes(i)]
+            for number in range(1, 10):
+                set_list = [[idx, my_set] for idx, my_set in enumerate(row) if (number in my_set and len(my_set) > 1)]
+                if len(set_list) == 1:
+                    print(f"row={i} {set_list[0][0]=} {set_list[0][1]=} {number=} ")
+                    set_list[0][1].intersection_update({number})
+        return self.update_board()
 
-        return choices_list
+    def check_individual_numbers(self, choices_list):
+        print("\n Checking for Singular numbers in groups of 3")
+        for idx in range(3):
+            row1 = self.get_row(0 + (3 * idx))
+            row2 = self.get_row(1 + (3 * idx))
+            row3 = self.get_row(2 + (3 * idx))
+
+            row1_choices = [choices_list[x] for x in self.get_row_indexes(0 + (3 * idx))]
+            row2_choices = [choices_list[x] for x in self.get_row_indexes(1 + (3 * idx))]
+            row3_choices = [choices_list[x] for x in self.get_row_indexes(2 + (3 * idx))]
+
+            for number_to_check in range(1, 10):
+                if number_to_check in row1 and number_to_check in row2 and number_to_check in row3:
+                    # Solved
+                    pass
+                elif number_to_check in row1 and number_to_check in row2:
+                    # Row 3 needs this number
+                    index = [index for index, my_set in enumerate(row3_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        row3_choices[index[0]].intersection_update({number_to_check})
+                elif number_to_check in row1 and number_to_check in row3:
+                    # Row 2 needs this number
+                    index = [index for index, my_set in enumerate(row2_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        row2_choices[index[0]].intersection_update({number_to_check})
+                elif number_to_check in row2 and number_to_check in row3:
+                    # Row 1 needs this number
+                    index = [index for index, my_set in enumerate(row1_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        row1_choices[index[0]].intersection_update({number_to_check})
+
+                elif number_to_check in row1:
+                    print("Need to find a spot in row 2")
+                    print("Need to find a spot in row 3")
+                elif number_to_check in row2:
+                    print("Need to find a spot in row 1")
+                    print("Need to find a spot in row 3")
+                elif number_to_check in row3:
+                    print("Need to find a spot in row 1")
+                    print("Need to find a spot in row 2")
+                else:
+                    print("Need to find a spot in row 1")
+                    print("Need to find a spot in row 2")
+                    print("Need to find a spot in row 3")
+        return self.update_board()
 
     def verify(self):
         correct = True
@@ -283,6 +355,9 @@ class SudokuSolver(Tk):
 
     def get_row(self, index):
         return [int((x.get()) if x.get() else 0) for x in self.entries[index]]
+
+    def get_row_indexes(self, index):
+        return [index * 9 + x for x in range(9)]
 
     def get_square_indexes(self, index):
         region_indexes = []
