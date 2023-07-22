@@ -161,6 +161,7 @@ class SudokuSolver(Tk):
 
     def print_possibilities(self):
         self.update_possible_choices()
+        self.solve_remove_rows_and_columns_and_squares()
         print(f"Possible Choices: ")
         for i in range(9):
             my_set = [self.possible_choices_list[x] for x in self.get_row_indexes(i)]
@@ -255,6 +256,7 @@ class SudokuSolver(Tk):
         # For each Square
         for i in range(9):
             square_index_list = [self.possible_choices_list[x] for x in self.get_square_indexes(i)]
+            print(f"{square_index_list=}")
 
             # Do the set difference
             non_complete_row = []
@@ -305,16 +307,19 @@ class SudokuSolver(Tk):
                     index = [index for index, my_set in enumerate(row3_choices) if number_to_check in my_set]
                     if len(index) == 1:
                         row3_choices[index[0]].intersection_update({number_to_check})
+                        return self.update_board()
                 elif number_to_check in row1 and number_to_check in row3:
                     # Row 2 needs this number
                     index = [index for index, my_set in enumerate(row2_choices) if number_to_check in my_set]
                     if len(index) == 1:
                         row2_choices[index[0]].intersection_update({number_to_check})
+                        return self.update_board()
                 elif number_to_check in row2 and number_to_check in row3:
                     # Row 1 needs this number
                     index = [index for index, my_set in enumerate(row1_choices) if number_to_check in my_set]
                     if len(index) == 1:
                         row1_choices[index[0]].intersection_update({number_to_check})
+                        return self.update_board()
 
         return self.update_board()
 
