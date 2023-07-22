@@ -119,28 +119,34 @@ class SudokuSolver(Tk):
         start = time()
         self.update_possible_choices()
         changes = 1
+        duplicate_counter = 0
+        single_counter = 0
+        triplet_counter = 0
         while changes != 0:
             while changes != 0:
                 while changes != 0:
                     if self.calculate_entropy() == 0:
                         break
                     changes = self.solve_remove_rows_and_columns_and_squares()
+                    duplicate_counter += 1
                     print(f"{changes=}")
 
                 if self.calculate_entropy() == 0:
                     break
                 changes = self.solve_single_possibilities()
+                single_counter += 1
                 print(f"{changes=}")
 
             if self.calculate_entropy() == 0:
                 break
             changes = self.solve_triplet_possibilities()
+            triplet_counter += 1
             print(f"{changes=}")
 
         if not self.verify():
             print("Need more logic!")
         end = time()
-        print(f"Total time: {end -start}")
+        print(f"Total time: {end -start} : {duplicate_counter=} {single_counter=} {triplet_counter=}")
 
     def calculate_entropy(self):
         def num_to_range(num, inMin, inMax, outMin, outMax):
@@ -189,8 +195,7 @@ class SudokuSolver(Tk):
         print(f"Before {self.calculate_entropy()}")
 
         self.check_triplet_rows()
-
-        # self.check_for_triplet_possibility_columns()
+        self.check_triplet_columns()
 
         print(f"After {self.calculate_entropy()}")
 
@@ -282,7 +287,6 @@ class SudokuSolver(Tk):
                     return
 
     def check_triplet_rows(self):
-        print("\n Checking for Singular numbers in groups of 3")
         for idx in range(3):
             row1 = self.get_row(0 + (3 * idx))
             row2 = self.get_row(1 + (3 * idx))
@@ -312,19 +316,38 @@ class SudokuSolver(Tk):
                     if len(index) == 1:
                         row1_choices[index[0]].intersection_update({number_to_check})
 
-                elif number_to_check in row1:
-                    print("Need to find a spot in row 2")
-                    print("Need to find a spot in row 3")
-                elif number_to_check in row2:
-                    print("Need to find a spot in row 1")
-                    print("Need to find a spot in row 3")
-                elif number_to_check in row3:
-                    print("Need to find a spot in row 1")
-                    print("Need to find a spot in row 2")
-                else:
-                    print("Need to find a spot in row 1")
-                    print("Need to find a spot in row 2")
-                    print("Need to find a spot in row 3")
+        return self.update_board()
+
+    def check_triplet_columns(self):
+        for idx in range(3):
+            column1 = self.get_column(0 + (3 * idx))
+            column2 = self.get_column(1 + (3 * idx))
+            column3 = self.get_column(2 + (3 * idx))
+
+            column1_choices = [self.possible_choices_list[x] for x in self.get_column_indexes(0 + (3 * idx))]
+            column2_choices = [self.possible_choices_list[x] for x in self.get_column_indexes(1 + (3 * idx))]
+            column3_choices = [self.possible_choices_list[x] for x in self.get_column_indexes(2 + (3 * idx))]
+
+            for number_to_check in range(1, 10):
+                if number_to_check in column1 and number_to_check in column2 and number_to_check in column3:
+                    # Solved
+                    pass
+                elif number_to_check in column1 and number_to_check in column2:
+                    # Row 3 needs this number
+                    index = [index for index, my_set in enumerate(column3_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        column3_choices[index[0]].intersection_update({number_to_check})
+                elif number_to_check in column1 and number_to_check in column3:
+                    # Row 2 needs this number
+                    index = [index for index, my_set in enumerate(column2_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        column2_choices[index[0]].intersection_update({number_to_check})
+                elif number_to_check in column2 and number_to_check in column3:
+                    # Row 1 needs this number
+                    index = [index for index, my_set in enumerate(column1_choices) if number_to_check in my_set]
+                    if len(index) == 1:
+                        column1_choices[index[0]].intersection_update({number_to_check})
+
         return self.update_board()
 
     def verify(self):
