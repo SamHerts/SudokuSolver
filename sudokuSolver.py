@@ -118,28 +118,34 @@ class SudokuSolver(Tk):
     def solve(self):
         start = time()
         self.update_possible_choices()
+        entropy_before = 1000
+        entropy_after = 100
+
         changes = 1
         duplicate_counter = 0
         single_counter = 0
         triplet_counter = 0
-        while changes != 0:
-            while changes != 0:
-                while changes != 0:
+        while entropy_before - entropy_after != 0:
+            while entropy_before - entropy_after != 0:
+                while entropy_before - entropy_after != 0:
                     if self.calculate_entropy() == 0:
                         break
-                    changes = self.solve_remove_rows_and_columns_and_squares()
+                    entropy_before = entropy_after
+                    entropy_after = self.solve_remove_rows_and_columns_and_squares()
                     duplicate_counter += 1
                     print(f"{changes=}")
 
                 if self.calculate_entropy() == 0:
                     break
-                changes = self.solve_single_possibilities()
+                entropy_before = entropy_after
+                entropy_after = self.solve_single_possibilities()
                 single_counter += 1
                 print(f"{changes=}")
 
             if self.calculate_entropy() == 0:
                 break
-            changes = self.solve_triplet_possibilities()
+            entropy_before = entropy_after
+            entropy_after = self.solve_triplet_possibilities()
             triplet_counter += 1
             print(f"{changes=}")
 
@@ -168,7 +174,7 @@ class SudokuSolver(Tk):
             print(my_set)
 
     def update_board(self):
-        count = 0
+
         for idx in range(len(self.possible_choices_list)):
             entry = self.entries[int(idx / 9)][idx % 9]
             if len(self.possible_choices_list[idx]) == 1:
@@ -176,41 +182,31 @@ class SudokuSolver(Tk):
                     # TODO: Validate Row Column Square before inserting
                     x = list(self.possible_choices_list[idx])
                     entry.insert(END, x[0])
-                    count += 1
-        return count
+
+        return self.calculate_entropy()
 
     def solve_remove_rows_and_columns_and_squares(self):
-        print("\nRemoving Duplicates")
-        print(f"Before {self.calculate_entropy()}")
-
         self.remove_line_duplicates()
         self.remove_column_duplicates()
         self.remove_square_duplicates()
-
-        print(f"After {self.calculate_entropy()}")
 
         return self.update_board()
 
     def solve_triplet_possibilities(self):
         print("\nSolving for Triplet Possibilities")
-        print(f"Before {self.calculate_entropy()}")
+        entropy = self.calculate_entropy()
 
-        self.check_triplet_rows()
-        self.check_triplet_columns()
-
-        print(f"After {self.calculate_entropy()}")
+        if entropy - self.check_triplet_rows() == 0:
+            return self.check_triplet_columns()
 
         return self.update_board()
 
     def solve_single_possibilities(self):
         print("\nSolving for Single Possibilities")
-        print(f"Before {self.calculate_entropy()}")
+        entropy = self.calculate_entropy()
 
-        self.check_for_single_rows()
-
-        self.check_for_single_columns()
-
-        print(f"After {self.calculate_entropy()}")
+        if entropy - self.check_for_single_rows() == 0:
+            return self.check_for_single_columns()
 
         return self.update_board()
 
@@ -256,7 +252,6 @@ class SudokuSolver(Tk):
         # For each Square
         for i in range(9):
             square_index_list = [self.possible_choices_list[x] for x in self.get_square_indexes(i)]
-            print(f"{square_index_list=}")
 
             # Do the set difference
             non_complete_row = []
@@ -277,7 +272,8 @@ class SudokuSolver(Tk):
                 set_list = [[idx, my_set] for idx, my_set in enumerate(row) if (number in my_set and len(my_set) > 1)]
                 if len(set_list) == 1:
                     set_list[0][1].intersection_update({number})
-                    return
+                    return self.update_board()
+        return self.update_board()
 
     def check_for_single_columns(self):
         for i in range(9):
@@ -286,7 +282,8 @@ class SudokuSolver(Tk):
                 set_list = [[idx, my_set] for idx, my_set in enumerate(column) if (number in my_set and len(my_set) > 1)]
                 if len(set_list) == 1:
                     set_list[0][1].intersection_update({number})
-                    return
+                    return self.update_board()
+        return self.update_board()
 
     def check_triplet_rows(self):
         for idx in range(3):
