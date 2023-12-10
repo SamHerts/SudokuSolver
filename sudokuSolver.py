@@ -1,4 +1,3 @@
-# https://github.com/ForrestKnight/SudokuSolver just in case
 from tkinter import Tk, DISABLED, NORMAL, Menu, TOP, LEFT, RIGHT, BOTH, NONE, NW, W, NE, E, X, Canvas, N, messagebox, \
     END, Toplevel, Text, filedialog
 from tkinter.ttk import Style, Label, Button, Entry, Notebook, Combobox, Frame
